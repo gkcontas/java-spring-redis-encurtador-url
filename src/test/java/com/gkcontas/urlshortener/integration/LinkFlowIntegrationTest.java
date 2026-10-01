@@ -1,6 +1,7 @@
 package com.gkcontas.urlshortener.integration;
 
 import static org.awaitility.Awaitility.await;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -33,6 +34,12 @@ class LinkFlowIntegrationTest extends IntegrationTestBase {
     @Test
     void shouldResolveFromCacheOnSecondAccessWithoutHittingTheDatabaseAgain() throws Exception {
         String code = createLink("https://example.com/page");
+
+        // Creating the link already called findByCode once, because ShortCodeGenerator
+        // checks that the generated code is not taken. Counting that setup call together
+        // with the resolves would make the assertion below mean something else than what
+        // it claims, so the spy starts from a clean slate here.
+        clearInvocations(linkRepository);
 
         mockMvc.perform(get("/{code}", code))
                 .andExpect(status().isFound())
