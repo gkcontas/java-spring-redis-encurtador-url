@@ -65,7 +65,17 @@ Isso foi validado manualmente rodando a aplicação: criei um link, conferi a ch
 - `service` — testes unitários (geração de código, lógica de cache-aside com Redis/repositório mockados), não precisam de Docker.
 - `integration` — testes de integração via MockMvc contra PostgreSQL e Redis reais (Testcontainers). O teste principal usa um `@SpyBean` sobre `LinkRepository` para comprovar que o segundo acesso ao mesmo código **não** dispara uma nova consulta ao banco (`verify(linkRepository, times(1)).findByCode(...)`, mesmo após dois `GET /{code}`).
 
-> **Nota sobre o ambiente de desenvolvimento usado para este projeto**: neste sandbox específico, os testes de integração baseados em Testcontainers não executam pela mesma causa raiz observada nos projetos [3](../java-spring-kafka-pipeline-eventos-cliques), [5](../java-spring-selenium-painel-tarefas) e [6](../java-spring-graphql-biblioteca). Os 10 testes unitários passam normalmente, tudo compila, e o fluxo completo (criar, cache miss/hit, contagem, desativação, invalidação) foi validado manualmente subindo a aplicação com `docker compose` e inspecionando o Redis diretamente.
+Suíte completa: **14 testes, todos passando** — 10 unitários e 4 de integração contra PostgreSQL e Redis reais.
+
+> O teste de cache-aside limpa as invocações do spy (`clearInvocations`) logo após criar o link. Motivo: o `ShortCodeGenerator` também chama `findByCode` para conferir que o código sorteado não está em uso, então contar essa chamada de setup junto com as de `resolve` faria a asserção significar algo diferente do que ela afirma.
+
+### Nota sobre Testcontainers e Docker Engine recente
+
+Se os testes falharem com `client version 1.32 is too old. Minimum supported API version is 1.40`, a causa é o `docker-java` embutido no Testcontainers negociar a API 1.32, abaixo do mínimo aceito pelo Docker Engine 29+. Correção global, de uma linha:
+
+```bash
+echo 'api.version=1.44' > ~/.docker-java.properties
+```
 
 ## Endpoints principais
 
